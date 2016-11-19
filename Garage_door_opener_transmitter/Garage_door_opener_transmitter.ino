@@ -149,16 +149,15 @@ void loop() {
 void readValues ()
 {
   x = y = z = 0;
-  for (int i = 0; i < 5; i++)
+  for (int i = 0; i < 10; i++)
   {
     x += analogRead(A0);
     y += analogRead(A3);
     z += analogRead(A4);
   }
-  x = x / 5;
-  y = y / 5;
-  z = z / 5;
-  delay(1);
+  x = x / 10;
+  y = y / 10;
+  z = z / 10;
 }
 
 void dump_radio_status_to_serialport(uint8_t status)
