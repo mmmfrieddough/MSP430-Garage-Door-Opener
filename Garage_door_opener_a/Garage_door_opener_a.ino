@@ -3,9 +3,9 @@
 #include <nRF24L01.h>
 #include <string.h>
 
-#define GREEN P2_3
-#define YELLOW P2_5
-#define RESULT P2_4
+#define GREEN P2_3 //Green LED
+#define YELLOW P2_5 //Yellow LED
+#define RESULT P2_4 //Other green LED at bottom
 
 Enrf24 radio(P2_0, P2_1, P2_2);  // P2.0=CE, P2.1=CSN, P2.2=IRQ
 const uint8_t txaddr[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x01 };
