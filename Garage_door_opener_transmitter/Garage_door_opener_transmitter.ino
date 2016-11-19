@@ -43,17 +43,21 @@ void loop() {
     readValues ();
 
     //Light up LEDs for directions
+
+    //Forward - Green
     if (x > 1.10 * x_base)
     {
       digitalWrite(GREEN, HIGH);
       xtime++;
     }
-    else if (x < 1.05 * x_base)
+    else if (x < 1.06 * x_base)
     {
       digitalWrite(GREEN, LOW);
       xtime = 0;
       xflag = true;
     }
+
+    //Left - Yellow
     if (y < 0.97 * y_base)
     {
       digitalWrite(YELLOW, HIGH);
@@ -65,12 +69,14 @@ void loop() {
       ytime = 0;
       yflag = true;
     }
-    if (z < 0.96 * z_base)
+
+    //Down - Red
+    if (z < 0.93 * z_base)
     {
       //digitalWrite(P2_5, HIGH);
       ztime++;
     }
-    else if (z > 0.98 * z_base)
+    else if (z > 0.95 * z_base)
     {
       //digitalWrite(P2_5, LOW);
       ztime = 0;
@@ -123,6 +129,8 @@ void loop() {
     {
       if (pos >= 5)
       {
+        pos = 0;
+        ztime = 0;
         Serial.print("Sending packet: ");
         Serial.println(str_open);
         radio.print(str_open);
@@ -131,11 +139,12 @@ void loop() {
         digitalWrite(RESULT, HIGH);
         delay(1000);
         digitalWrite(RESULT, LOW);
-        pos = 0;
       }
       else
       {
+        Serial.println("Password Incorrect");
         pos = 0;
+        ztime = 0;
       }
     }
     else
