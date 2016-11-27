@@ -3,23 +3,30 @@
 #include <nRF24L01.h>
 #include <string.h>
 
+//Pin definitions for LED's
 #define GREEN P2_3 //Green LED
 #define YELLOW P2_5 //Yellow LED
-#define RESULT P2_4 //Other green LED at bottom
+#define CORRECT P2_4 //Other green LED at bottom
 
+//Variables used by RF transmitter
 Enrf24 radio(P2_0, P2_1, P2_2);  // P2.0=CE, P2.1=CSN, P2.2=IRQ
 const uint8_t txaddr[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x01 };
-int i, x_base, y_base, z_base, x, y, z, xtime, ytime, ztime, xflag, yflag, dimledx, dimledy, dimledz, passcode[5] = {0, 0, 0, 1, 1}, pos = 0;
-
 const char *str_open = "OPEN";
 
-void dump_radio_status_to_serialport(uint8_t);
+//Variables used by accelerometer and passcode logic
+int i, x_base, y_base, z_base, x, y, z, xtime, ytime, ztime, xflag, yflag, zflag, passcode[5] = {0, 0, 0, 0, 0}, pos = 0;
 
-void setup() {  
+//Functions
+void dump_radio_status_to_serialport(uint8_t);
+void readValues ();
+
+void setup() {
+  //Set LED's to output
   pinMode (GREEN, OUTPUT);
   pinMode (YELLOW, OUTPUT);
-  pinMode (RESULT, OUTPUT);
+  pinMode (CORRECT, OUTPUT);
 
+  //Read initial accelerometer variables to use as a base
   readValues ();
   x_base = x;
   y_base = y;
@@ -27,19 +34,18 @@ void setup() {
 
   Serial.begin(9600);
 
+  //Set up rf transmitter
   SPI.begin();
   SPI.setDataMode(SPI_MODE0);
   SPI.setBitOrder(MSBFIRST);
-
   radio.begin();  // Defaults 1Mbps, channel 0, max TX power
   dump_radio_status_to_serialport(radio.radioState());
   delay(1000);
-
   radio.setTXaddress((void*)txaddr);
 }
 
 void loop() {
-    // put your main code here, to run repeatedly: 
+    //Get new values at the begininng of loop
     readValues ();
 
     //Light up LEDs for directions
@@ -47,12 +53,10 @@ void loop() {
     //Forward - Green
     if (x > 1.10 * x_base)
     {
-      digitalWrite(GREEN, HIGH);
       xtime++;
     }
     else if (x < 1.06 * x_base)
     {
-      digitalWrite(GREEN, LOW);
       xtime = 0;
       xflag = true;
     }
@@ -60,96 +64,97 @@ void loop() {
     //Left - Yellow
     if (y < 0.97 * y_base)
     {
-      digitalWrite(YELLOW, HIGH);
       ytime++;
     }
     else if (y > 0.98 * y_base)
     {
-      digitalWrite(YELLOW, LOW);
       ytime = 0;
       yflag = true;
     }
 
-    //Down - Red
+    //Down
     if (z < 0.93 * z_base)
     {
-      //digitalWrite(P2_5, HIGH);
       ztime++;
     }
     else if (z > 0.95 * z_base)
     {
-      //digitalWrite(P2_5, LOW);
       ztime = 0;
+      zflag = true;
     }
 
     //Compare to passcode
-    if (xtime > 3)
+    if (xtime > 3 && xflag == true)
     {
-      if (passcode[pos] == 0  && xflag == true)
+      digitalWrite(GREEN, HIGH);
+      delay(200);
+      digitalWrite(GREEN, HIGH);
+      xflag = false;
+      
+      if (passcode[pos] == 0)
       {
         pos++;
-        xflag = false;
-        digitalWrite(RESULT, HIGH);
-        Serial.print("Next character: ");
-        Serial.println(passcode[pos]);
-        delay(20);
+        Serial.println("Correct!");
       }
       else
-      {
-        digitalWrite(RESULT, LOW);
-      }
-    }
-    else
-    {
-      digitalWrite(RESULT, LOW);
-    }
-
-    if (ytime > 3)
-    {
-      if (passcode[pos] == 1 && yflag == true)
-      {
-        pos++;
-        yflag = false;
-        digitalWrite(RESULT, HIGH);
-        Serial.print("Next character: ");
-        Serial.println(passcode[pos]);
-        delay(20);
-      }
-      else
-      {
-        digitalWrite(RESULT, LOW);
-      }
-    }
-    else
-    {
-      digitalWrite(RESULT, LOW);
-    }
-
-    if (ztime > 3)
-    {
-      if (pos >= 5)
       {
         pos = 0;
-        ztime = 0;
+        Serial.println("Incorrect!");
+      }
+
+      Serial.print("Next character: ");
+      Serial.println(passcode[pos]);
+      delay(20);
+    }
+
+    if (ytime > 3 && yflag == true)
+    {
+      digitalWrite(YELLOW, HIGH);
+      delay(200);
+      digitalWrite(YELLOW, HIGH);
+      yflag = false;
+      
+      if (passcode[pos] == 1)
+      {
+        pos++;
+        Serial.println("Correct!");
+      }
+      else
+      {
+        pos = 0;
+        Serial.println("Incorrect!");
+      }
+
+      Serial.print("Next character: ");
+      Serial.println(passcode[pos]);
+      delay(20);
+    }
+
+    if (ztime > 3 && zflag == true)
+    {
+      zflag = false;
+      
+      if (pos >= 5)
+      {
         Serial.print("Sending packet: ");
         Serial.println(str_open);
         radio.print(str_open);
         radio.flush();  // Force transmit (don't wait for any more data)
         dump_radio_status_to_serialport(radio.radioState());  // Should report IDLE
-        digitalWrite(RESULT, HIGH);
+        digitalWrite(CORRECT, HIGH);
         delay(1000);
-        digitalWrite(RESULT, LOW);
+        digitalWrite(CORRECT, LOW);
       }
       else
       {
         Serial.println("Password Incorrect");
-        pos = 0;
-        ztime = 0;
+//        digitalWrite(INCORRECT, HIGH);
+//        delay(1000);
+//        digitalWrite(INCORRECT, LOW);
       }
-    }
-    else
-    {
-      digitalWrite(RESULT, LOW);
+      
+      pos = 0;
+      ztime = 0;
     }
     
     delay(5);
