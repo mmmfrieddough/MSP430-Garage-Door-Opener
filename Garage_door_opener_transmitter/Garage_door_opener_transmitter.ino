@@ -7,14 +7,15 @@
 #define GREEN P2_3 //Green LED
 #define YELLOW P2_5 //Yellow LED
 #define CORRECT P2_4 //Other green LED at bottom
+#define INCORRECT P1_1 //Red LED
 
 //Variables used by RF transmitter
 Enrf24 radio(P2_0, P2_1, P2_2);  // P2.0=CE, P2.1=CSN, P2.2=IRQ
-const uint8_t txaddr[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x01 };
+const uint8_t txaddr[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x02 };
 const char *str_open = "OPEN";
 
 //Variables used by accelerometer and passcode logic
-int i, x_base, y_base, z_base, x, y, z, xtime, ytime, ztime, xflag, yflag, zflag, passcode[5] = {0, 0, 0, 0, 0}, pos = 0;
+int i, x_base, y_base, z_base, x, y, z, xtime, ytime, ztime, xflag, yflag, zflag, passlen = 5, passcode[5] = {0, 0, 1, 0, 1}, pos = 0;
 
 //Functions
 void dump_radio_status_to_serialport(uint8_t);
@@ -25,6 +26,11 @@ void setup() {
   pinMode (GREEN, OUTPUT);
   pinMode (YELLOW, OUTPUT);
   pinMode (CORRECT, OUTPUT);
+  pinMode (INCORRECT, OUTPUT);
+  digitalWrite(GREEN, LOW);
+  digitalWrite(YELLOW, LOW);
+  digitalWrite(CORRECT, LOW);
+  digitalWrite(INCORRECT, LOW);
 
   //Read initial accelerometer variables to use as a base
   readValues ();
@@ -32,14 +38,14 @@ void setup() {
   y_base = y;
   z_base = z;
 
-  Serial.begin(9600);
+//  Serial.begin(9600);
 
   //Set up rf transmitter
   SPI.begin();
   SPI.setDataMode(SPI_MODE0);
   SPI.setBitOrder(MSBFIRST);
   radio.begin();  // Defaults 1Mbps, channel 0, max TX power
-  dump_radio_status_to_serialport(radio.radioState());
+//  dump_radio_status_to_serialport(radio.radioState());
   delay(1000);
   radio.setTXaddress((void*)txaddr);
 }
@@ -51,33 +57,33 @@ void loop() {
     //Light up LEDs for directions
 
     //Forward - Green
-    if (x > 1.10 * x_base)
+    if (x > 1.12 * x_base)
     {
       xtime++;
     }
-    else if (x < 1.06 * x_base)
+    else if (x < 1.08 * x_base)
     {
       xtime = 0;
       xflag = true;
     }
 
     //Left - Yellow
-    if (y < 0.97 * y_base)
+    if (y < 0.94 * y_base)
     {
       ytime++;
     }
-    else if (y > 0.98 * y_base)
+    else if (y > 0.96 * y_base)
     {
       ytime = 0;
       yflag = true;
     }
 
     //Down
-    if (z < 0.93 * z_base)
+    if (z < 0.88 * z_base)
     {
       ztime++;
     }
-    else if (z > 0.95 * z_base)
+    else if (z > 0.90 * z_base)
     {
       ztime = 0;
       zflag = true;
@@ -88,22 +94,22 @@ void loop() {
     {
       digitalWrite(GREEN, HIGH);
       delay(200);
-      digitalWrite(GREEN, HIGH);
+      digitalWrite(GREEN, LOW);
       xflag = false;
       
       if (passcode[pos] == 0)
       {
         pos++;
-        Serial.println("Correct!");
+//        Serial.println("Correct!");
       }
       else
       {
         pos = 0;
-        Serial.println("Incorrect!");
+//        Serial.println("Incorrect!");
       }
 
-      Serial.print("Next character: ");
-      Serial.println(passcode[pos]);
+//      Serial.print("Next character: ");
+//      Serial.println(passcode[pos]);
       delay(20);
     }
 
@@ -111,22 +117,22 @@ void loop() {
     {
       digitalWrite(YELLOW, HIGH);
       delay(200);
-      digitalWrite(YELLOW, HIGH);
+      digitalWrite(YELLOW, LOW);
       yflag = false;
       
       if (passcode[pos] == 1)
       {
         pos++;
-        Serial.println("Correct!");
+//        Serial.println("Correct!");
       }
       else
       {
         pos = 0;
-        Serial.println("Incorrect!");
+//        Serial.println("Incorrect!");
       }
 
-      Serial.print("Next character: ");
-      Serial.println(passcode[pos]);
+//      Serial.print("Next character: ");
+//      Serial.println(passcode[pos]);
       delay(20);
     }
 
@@ -134,23 +140,23 @@ void loop() {
     {
       zflag = false;
       
-      if (pos >= 5)
+      if (pos >= passlen)
       {
-        Serial.print("Sending packet: ");
-        Serial.println(str_open);
+//        Serial.print("Sending packet: ");
+//        Serial.println(str_open);
         radio.print(str_open);
         radio.flush();  // Force transmit (don't wait for any more data)
-        dump_radio_status_to_serialport(radio.radioState());  // Should report IDLE
+//        dump_radio_status_to_serialport(radio.radioState());  // Should report IDLE
         digitalWrite(CORRECT, HIGH);
         delay(1000);
         digitalWrite(CORRECT, LOW);
       }
       else
       {
-        Serial.println("Password Incorrect");
-//        digitalWrite(INCORRECT, HIGH);
-//        delay(1000);
-//        digitalWrite(INCORRECT, LOW);
+//        Serial.println("Password Incorrect");
+        digitalWrite(INCORRECT, HIGH);
+        delay(1000);
+        digitalWrite(INCORRECT, LOW);
       }
       
       pos = 0;
